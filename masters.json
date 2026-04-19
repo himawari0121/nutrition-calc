@@ -1,0 +1,71 @@
+{
+  "_readme": "このファイルを GitHub Pages のリポジトリ直下（index.html と同じ場所）に置くと、アプリの初回起動時に自動で取り込まれます。不要なら削除して構いません。nutrients の数値は null（未設定）と 0（ゼロ）で区別されます。基準量(refVolumeMl)は 1本/1個あたりの mL です。",
+  "version": 2,
+  "updatedAt": "2026-04-19",
+  "masters": {
+    "iv": [
+      {
+        "id": "iv_example_1",
+        "name": "（例）維持液製品名 500mL",
+        "kana": "いじえきせいひんめい",
+        "category": "維持液",
+        "refVolumeMl": 500,
+        "isInsulin": false,
+        "favorite": true,
+        "nutrients": {
+          "energy": 200, "protein": 0, "fat": 0, "carb": 50,
+          "na": 17.5, "k": 10, "mg": null, "p": null, "water": 500
+        },
+        "memo": "添付文書 改訂2024.X"
+      },
+      {
+        "id": "iv_example_insulin",
+        "name": "（例）インスリン製剤",
+        "kana": "いんすりんせいざい",
+        "category": "インスリン混注",
+        "isInsulin": true,
+        "refVolumeMl": null,
+        "favorite": true,
+        "nutrients": {}
+      }
+    ],
+    "meal": [
+      {
+        "id": "meal_example_joushoku",
+        "name": "常食（自院献立）",
+        "kana": "じょうしょく",
+        "category": "一般食",
+        "nutrients": {
+          "energy": 600, "protein": 25, "fat": 20, "carb": 80,
+          "na": 120, "k": 40, "mg": 80, "p": 400, "water": 300
+        },
+        "memo": "1食あたりの平均値。献立改訂時に更新"
+      }
+    ],
+    "enteral": [
+      {
+        "id": "ent_example_a",
+        "name": "（例）経腸栄養剤A 200mL",
+        "kana": "けいちょうえいようざいえー",
+        "category": "標準組成",
+        "refVolumeMl": 200,
+        "nutrients": {
+          "energy": 200, "protein": 7, "fat": 7, "carb": 28,
+          "na": 70, "k": 40, "mg": 20, "p": 70, "water": 170
+        }
+      }
+    ],
+    "ons": [
+      {
+        "id": "ons_example_a",
+        "name": "（例）ONS A 125mL",
+        "kana": "おーえぬえすえー",
+        "category": "高たんぱく",
+        "nutrients": {
+          "energy": 200, "protein": 10, "fat": 6, "carb": 30,
+          "na": 80, "k": 120, "mg": 20, "p": 80, "water": 100
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="栄養計算">
+<meta name="theme-color" content="#1e40af">
+<link rel="manifest" href="manifest.json">
+<title>1日栄養計算</title>
+<style>
+/* ============== リセット & 基本 ============== */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a202c;
+  background: #f5f7fa;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+:root {
+  --primary: #1e40af;
+  --primary-light: #3b82f6;
+  --accent: #0e7490;
+  --danger: #dc2626;
+  --warn: #d97706;
+  --ok: #059669;
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --muted: #6b7280;
+  --text: #1a202c;
+}
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+input[type="number"], input[type="text"], input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 40px;
+}
+input[type="number"]:focus, input[type="text"]:focus, input[type="date"]:focus {
+  outline: 2px solid var(--primary-light);
+  outline-offset: -1px;
+  border-color: var(--primary-light);
+}
+button {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+/* ============== ヘッダー ============== */
+#app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 12px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.icon-btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+.icon-btn:active { background: rgba(255,255,255,0.3); }
+.record-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+.record-controls input {
+  background: rgba(255,255,255,0.95);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 36px;
+}
+.record-controls input[type="date"] { width: 140px; flex: 0 0 auto; }
+.record-controls input[type="text"] { flex: 1; min-width: 0; }
+
+/* ============== メイン ============== */
+main {
+  padding: 12px;
+  padding-bottom: 170px; /* スティッキーバー分の余白 */
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ============== セクション ============== */
+.nutri-section {
+  background: var(--surface);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  /* overflow を hidden にしないこと：下の autocomplete dropdown が切られてしまうため */
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f0f4f8;
+  border-bottom: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+.section-subtotal {
+  font-size: 12px;
+  color: var(--muted);
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-list { padding: 4px 8px 8px; }
+
+/* ============== 行 ============== */
+.nutri-row {
+  border-bottom: 1px solid #f1f3f5;
+  padding: 8px 4px;
+  position: relative;
+}
+.nutri-row:last-child { border-bottom: none; }
+.row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-product-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 0;
+}
+.row-product-name.empty { color: var(--muted); font-weight: normal; }
+.row-product-cat {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 4px;
+  font-weight: normal;
+}
+.row-qty-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.row-qty {
+  width: 68px;
+  text-align: right;
+  min-height: 38px;
+  padding: 6px 8px;
+}
+.row-unit {
+  font-size: 13px;
+  color: var(--muted);
+  min-width: 26px;
+}
+.row-delete {
+  color: var(--danger);
+  font-size: 22px;
+  min-width: 32px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.row-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  padding-left: 4px;
+  line-height: 1.4;
+}
+.row-sub .warn { color: var(--warn); }
+
+/* autocomplete 入力 */
+.autocomplete-row { padding: 4px 4px 10px; }
+.autocomplete-wrap { position: relative; }
+.autocomplete-input {
+  width: 100%;
+  font-size: 15px;
+  min-height: 42px;
+  padding: 8px 12px;
+  background: #fafbfc;
+  border: 1px dashed #c0c7d0;
+}
+.autocomplete-input::placeholder { color: var(--muted); }
+.autocomplete-input:focus { background: #fff; border-style: solid; }
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 20;
+  max-height: 280px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ac-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f3f5;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+  min-height: 44px;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:active, .ac-item.active { background: #eff6ff; }
+.ac-item-name { font-size: 14px; font-weight: 500; }
+.ac-item-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ac-item-fav { color: #f59e0b; margin-right: 4px; }
+.ac-section-header {
+  padding: 6px 12px;
+  background: #f8fafc;
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.ac-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ac-add-new {
+  padding: 10px 12px;
+  color: var(--primary);
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  background: #fafbfc;
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ============== スティッキー合計バー ============== */
+#summary-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 2px solid var(--primary);
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 25;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.summary-cell {
+  text-align: center;
+  padding: 4px 2px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+.summary-label {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.summary-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.summary-value.warn { color: var(--warn); }
+.summary-actions {
+  display: flex;
+  gap: 6px;
+}
+.summary-actions button {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--primary);
+  color: #fff;
+}
+.summary-actions button.secondary {
+  background: #f0f4f8;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.summary-actions button:active { opacity: 0.8; }
+
+/* ============== 折りたたみセクション ============== */
+.collapse-section {
+  background: var(--surface);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.collapse-section summary {
+  padding: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  list-style: none;
+  background: #f0f4f8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.collapse-section summary::-webkit-details-marker { display: none; }
+.collapse-section summary::after {
+  content: "▼";
+  font-size: 10px;
+  color: var(--muted);
+}
+.collapse-section[open] summary::after { content: "▲"; }
+.collapse-body { padding: 12px; }
+
+/* ============== マスタ編集UI ============== */
+.master-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.master-tab {
+  padding: 6px 12px;
+  background: #f0f4f8;
+  border-radius: 16px;
+  font-size: 13px;
+  min-height: 32px;
+}
+.master-tab.active { background: var(--primary); color: #fff; }
+.master-list { margin-top: 10px; }
+.master-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 4px;
+  border-bottom: 1px solid #f1f3f5;
+  gap: 8px;
+}
+.master-item-name { flex: 1; font-size: 14px; }
+.master-item-cat { font-size: 11px; color: var(--muted); }
+.master-item button { padding: 4px 8px; font-size: 12px; background: #f0f4f8; border-radius: 6px; min-height: 30px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.btn-row button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #f0f4f8;
+  border: 1px solid var(--border);
+  min-height: 38px;
+}
+.btn-row button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-row button.danger { color: var(--danger); }
+
+/* ============== モーダル ============== */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title { font-size: 16px; font-weight: 700; margin: 0; }
+.modal-body { padding: 14px; }
+.modal-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modal-footer button { padding: 8px 16px; min-height: 40px; border-radius: 8px; font-size: 14px; }
+.form-field { margin-bottom: 10px; }
+.form-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.form-field input, .form-field select, .form-field textarea { width: 100%; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.disclaimer {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 10px;
+  line-height: 1.5;
+}
+.badge-sample {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+.favorite-toggle {
+  font-size: 20px;
+  color: #d1d5db;
+  min-width: 32px;
+  text-align: center;
+}
+.favorite-toggle.on { color: #f59e0b; }
+
+/* Hide scroll on horizontal overflow guard */
+@media (max-width: 360px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .summary-grid .cell-d, .summary-grid .cell-e { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header id="app-header">
+  <div class="header-row">
+    <button class="icon-btn" id="btn-records" title="記録一覧">📋</button>
+    <div class="header-title" id="header-title">栄養計算</div>
+    <button class="icon-btn" id="btn-new" title="新規">＋</button>
+    <button class="icon-btn" id="btn-menu" title="メニュー">⋯</button>
+  </div>
+  <div class="record-controls">
+    <input type="date" id="record-date">
+    <input type="text" id="record-label" placeholder="記録名（任意）" maxlength="40">
+  </div>
+</header>
+
+<main>
+  <!-- 4つのセクションは JS で描画 -->
+  <div id="sections-container"></div>
+
+  <details class="collapse-section">
+    <summary>マスタ編集</summary>
+    <div class="collapse-body" id="master-editor"></div>
+  </details>
+
+  <details class="collapse-section">
+    <summary>データ管理（バックアップ・読み込み）</summary>
+    <div class="collapse-body" id="data-manager"></div>
+  </details>
+
+  <div class="disclaimer">
+    本ツールは栄養量の計算補助です。投与・処方の推奨は行いません。<br>
+    入力データは本端末のブラウザ内にのみ保存されます。
+  </div>
+</main>
+
+<div id="summary-bar">
+  <div class="summary-grid" id="summary-grid"></div>
+  <div class="summary-actions">
+    <button class="secondary" id="btn-copy">サマリーをコピー</button>
+    <button id="btn-save">保存</button>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+/* ============================================================
+ * 1日栄養計算 - メインスクリプト
+ * ============================================================ */
+
+'use strict';
+
+// ------------------------- 定数 -------------------------
+const STORAGE_KEY = 'nutriCalc_v2';
+
+// 栄養素の定義
+const METRICS = [
+  { key: 'energy',  label: 'エネルギー', short: 'E',   unit: 'kcal', decimals: 0 },
+  { key: 'protein', label: 'たんぱく質', short: 'P',   unit: 'g',    decimals: 1 },
+  { key: 'fat',     label: '脂質',       short: 'F',   unit: 'g',    decimals: 1 },
+  { key: 'carb',    label: '糖質',       short: 'C',   unit: 'g',    decimals: 1 },
+  { key: 'na',      label: 'Na',        short: 'Na',  unit: 'mEq',  decimals: 1 },
+  { key: 'k',       label: 'K',         short: 'K',   unit: 'mEq',  decimals: 1 },
+  { key: 'mg',      label: 'Mg',        short: 'Mg',  unit: 'mg',   decimals: 0 },
+  { key: 'p',       label: 'P',         short: 'P',   unit: 'mg',   decimals: 0 },
+  { key: 'water',   label: '水分',       short: '水',  unit: 'mL',   decimals: 0 }
+];
+const METRIC_KEYS = METRICS.map(m => m.key);
+const SUMMARY_KEYS = ['energy', 'protein', 'carb', 'water', 'insulin']; // スティッキー表示用
+
+// セクション定義
+// inputMode:
+//   'volume' → 製品 + 量(mL) 入力。nutrients/refVolumeMl × inputMl で計算
+//   'ratio'  → 製品 + 割(0-10) 入力。nutrients × ratio/10 で計算
+//   'iv'     → volume と同じだが、isInsulin 製品を許容（入力 U で insulin のみ）
+const SECTIONS = [
+  { id: 'iv',       label: '点滴',       inputMode: 'iv',     defaultUnit: 'mL' },
+  { id: 'meal',     label: '食事',       inputMode: 'ratio',  defaultUnit: '割' },
+  { id: 'enteral',  label: '経腸栄養',   inputMode: 'volume', defaultUnit: 'mL' },
+  { id: 'ons',      label: 'ONS',       inputMode: 'ratio',  defaultUnit: '割' }
+];
+
+// ------------------------- ユーティリティ -------------------------
+function uid(prefix) {
+  return (prefix || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function dateMinus(iso, days) {
+  const d = new Date(iso);
+  d.setDate(d.getDate() - days);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function fmtNum(val, decimals) {
+  if (val === null || val === undefined || !isFinite(val)) return '—';
+  return Number(val).toFixed(decimals);
+}
+
+// ------------------------- 状態管理 -------------------------
+const state = {
+  masters: { iv: [], meal: [], enteral: [], ons: [] },
+  records: {},        // id → record
+  currentRecordId: null,
+  recentProductUse: {}, // productId → timestamp（よく使う順）
+  ui: { masterActiveSection: 'iv' }
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (parsed.masters) state.masters = Object.assign({iv:[],meal:[],enteral:[],ons:[]}, parsed.masters);
+    if (parsed.records) state.records = parsed.records;
+    if (parsed.currentRecordId) state.currentRecordId = parsed.currentRecordId;
+    if (parsed.recentProductUse) state.recentProductUse = parsed.recentProductUse;
+    return true;
+  } catch(e) {
+    console.warn('State load failed', e);
+    return false;
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      masters: state.masters,
+      records: state.records,
+      currentRecordId: state.currentRecordId,
+      recentProductUse: state.recentProductUse
+    }));
+  } catch(e) {
+    console.warn('State save failed', e);
+  }
+}
+
+// ------------------------- レコード -------------------------
+function createEmptyRecord(date) {
+  return {
+    id: uid('rec'),
+    date: date || todayISO(),
+    label: '',
+    lines: { iv: [], meal: [], enteral: [], ons: [] },
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function getCurrentRecord() {
+  if (!state.currentRecordId || !state.records[state.currentRecordId]) {
+    const rec = createEmptyRecord();
+    state.records[rec.id] = rec;
+    state.currentRecordId = rec.id;
+    saveState();
+  }
+  return state.records[state.currentRecordId];
+}
+
+function newRecord() {
+  const rec = createEmptyRecord();
+  state.records[rec.id] = rec;
+  state.currentRecordId = rec.id;
+  saveState();
+  renderAll();
+}
+
+function deleteRecord(id) {
+  delete state.records[id];
+  if (state.currentRecordId === id) {
+    state.currentRecordId = null;
+    getCurrentRecord();
+  }
+  saveState();
+}
+
+function duplicateRecord(id) {
+  const src = state.records[id];
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = uid('rec');
+  copy.date = todayISO();
+  copy.createdAt = Date.now();
+  copy.updatedAt = Date.now();
+  // 行 id を振り直し
+  for (const sec of ['iv','meal','enteral','ons']) {
+    (copy.lines[sec] || []).forEach(ln => ln.id = uid('ln'));
+  }
+  state.records[copy.id] = copy;
+  state.currentRecordId = copy.id;
+  saveState();
+}
+
+function copyFromPreviousDay() {
+  const cur = getCurrentRecord();
+  const prevDate = dateMinus(cur.date, 1);
+  // 前日（または直近）の記録を探す
+  let src = null;
+  const records = Object.values(state.records).filter(r => r.id !== cur.id);
+  src = records.find(r => r.date === prevDate);
+  if (!src) {
+    records.sort((a,b) => (b.date > a.date ? 1 : -1));
+    src = records[0];
+  }
+  if (!src) {
+    alert('コピー元の記録が見つかりません。');
+    return;
+  }
+  // 行だけコピー
+  cur.lines = JSON.parse(JSON.stringify(src.lines));
+  for (const sec of ['iv','meal','enteral','ons']) {
+    (cur.lines[sec] || []).forEach(ln => ln.id = uid('ln'));
+  }
+  cur.updatedAt = Date.now();
+  saveState();
+  renderAll();
+}
+
+// ------------------------- 計算エンジン -------------------------
+/**
+ * 1行の栄養量を計算
+ * @returns { energy, protein, ..., insulin } もしくは各キーが null
+ *   null はマスタ側の数値が未設定 (「0 と区別」)
+ */
+function calcLine(sectionId, line) {
+  const result = {};
+  for (const k of METRIC_KEYS) result[k] = null;
+  result.insulin = null;
+
+  const prod = findProduct(sectionId, line.productId);
+  if (!prod) return result;
+
+  const sec = SECTIONS.find(s => s.id === sectionId);
+
+  if (sec.inputMode === 'iv' && prod.isInsulin) {
+    // インスリン製品：入力は U、他の栄養素は寄与しない
+    const u = toNumberOrNull(line.amount);
+    result.insulin = (u === null) ? null : u;
+    return result;
+  }
+
+  let factor = 0; // マスタ値に掛ける係数
+  let hasInput = false;
+
+  if (sec.inputMode === 'volume' || sec.inputMode === 'iv') {
+    // 量(mL) / refVolumeMl
+    const ml = toNumberOrNull(line.amount);
+    if (ml === null) return result; // 未入力 → 全て 0 扱いで良いか？ いや null 返却で合計側に反映させないほうが混乱しない
+    hasInput = true;
+    const ref = prod.refVolumeMl || 1;
+    factor = ml / ref;
+  } else if (sec.inputMode === 'ratio') {
+    // 割(0-10) / 10
+    const r = toNumberOrNull(line.amount);
+    if (r === null) return result;
+    hasInput = true;
+    factor = r / 10;
+  }
+
+  if (!hasInput) return result;
+
+  const nutrients = prod.nutrients || {};
+  for (const k of METRIC_KEYS) {
+    const v = nutrients[k];
+    if (v === null || v === undefined) {
+      result[k] = null;
+    } else {
+      result[k] = v * factor;
+    }
+  }
+  return result;
+}
+
+function toNumberOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+/**
+ * セクション小計。各キー { sum: number|null, unsetCount: int }
+ * - sum === null かつ unsetCount === 0 → 行がない（表示は 0）
+ * - sum === null かつ unsetCount > 0 → 全て未設定（— 表示）
+ * - sum !== null かつ unsetCount > 0 → 部分的に計算（* マーク）
+ */
+function sumLines(sectionId, lines) {
+  const bucket = {};
+  for (const k of METRIC_KEYS) bucket[k] = { sum: null, unsetCount: 0 };
+  bucket.insulin = { sum: null, unsetCount: 0 };
+  for (const line of lines) {
+    const calc = calcLine(sectionId, line);
+    for (const k of Object.keys(bucket)) {
+      if (calc[k] === null || calc[k] === undefined) {
+        // そのメトリクスが未設定
+        const prod = findProduct(sectionId, line.productId);
+        // 実際に行が有効（製品選択 + 量入力）な場合のみ unsetCount++
+        if (prod && toNumberOrNull(line.amount) !== null) {
+          bucket[k].unsetCount++;
+        }
+      } else {
+        bucket[k].sum = (bucket[k].sum || 0) + calc[k];
+      }
+    }
+  }
+  return bucket;
+}
+
+function combineBuckets(buckets) {
+  const res = {};
+  const keys = new Set();
+  for (const b of buckets) Object.keys(b).forEach(k => keys.add(k));
+  for (const k of keys) res[k] = { sum: null, unsetCount: 0 };
+  for (const b of buckets) {
+    for (const k of Object.keys(b)) {
+      if (b[k].sum !== null) {
+        res[k].sum = (res[k].sum || 0) + b[k].sum;
+      }
+      res[k].unsetCount += b[k].unsetCount;
+    }
+  }
+  return res;
+}
+
+function computeAll() {
+  const rec = getCurrentRecord();
+  const iv = sumLines('iv', rec.lines.iv || []);
+  const meal = sumLines('meal', rec.lines.meal || []);
+  const enteral = sumLines('enteral', rec.lines.enteral || []);
+  const ons = sumLines('ons', rec.lines.ons || []);
+  const grand = combineBuckets([iv, meal, enteral, ons]);
+
+  // 糖質インスリン比: IV の 糖質(g) / IV の insulin(U)
+  const ivCarb = iv.carb.sum;
+  const ivInsulin = iv.insulin.sum;
+  let carbInsulinRatio = null;
+  if (ivCarb !== null && ivInsulin !== null && ivInsulin > 0) {
+    carbInsulinRatio = ivCarb / ivInsulin;
+  }
+
+  return { iv, meal, enteral, ons, grand, carbInsulinRatio, ivInsulin: ivInsulin || 0 };
+}
+
+// ------------------------- マスタ操作 -------------------------
+function findProduct(sectionId, id) {
+  return (state.masters[sectionId] || []).find(p => p.id === id) || null;
+}
+function addOrUpdateMaster(sectionId, product) {
+  const arr = state.masters[sectionId] || (state.masters[sectionId] = []);
+  const idx = arr.findIndex(p => p.id === product.id);
+  if (idx >= 0) arr[idx] = product;
+  else arr.push(product);
+  saveState();
+}
+function deleteMaster(sectionId, id) {
+  state.masters[sectionId] = (state.masters[sectionId] || []).filter(p => p.id !== id);
+  saveState();
+}
+
+function toggleFavorite(sectionId, id) {
+  const p = findProduct(sectionId, id);
+  if (p) { p.favorite = !p.favorite; saveState(); }
+}
+
+function bumpRecent(productId) {
+  state.recentProductUse[productId] = Date.now();
+  saveState();
+}
+
+// 日本語正規化: カタカナ→ひらがな、全角英数→半角、長音/中黒/空白除去
+function normalizeJa(s) {
+  if (!s) return '';
+  return String(s).toLowerCase()
+    .replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+    .replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/[ー・\s]/g, '');
+}
+
+// 検索用スコアリング
+function searchProducts(sectionId, query) {
+  const q = normalizeJa((query || '').trim());
+  const products = state.masters[sectionId] || [];
+  let list = products.slice();
+  if (q) {
+    list = list.filter(p => {
+      const hay = normalizeJa((p.name || '') + ' ' + (p.category || '') + ' ' + (p.kana || ''));
+      return hay.includes(q);
+    });
+  }
+  // 並び順: お気に入り > 最近使った順 > 名前
+  list.sort((a,b) => {
+    if (!!b.favorite !== !!a.favorite) return (b.favorite?1:0) - (a.favorite?1:0);
+    const ra = state.recentProductUse[a.id] || 0;
+    const rb = state.recentProductUse[b.id] || 0;
+    if (rb !== ra) return rb - ra;
+    return (a.name || '').localeCompare(b.name || '', 'ja');
+  });
+  return list;
+}
+
+// ------------------------- 行操作 -------------------------
+function addLine(sectionId, productId) {
+  const rec = getCurrentRecord();
+  const line = { id: uid('ln'), productId: productId, amount: '' };
+  if (!rec.lines[sectionId]) rec.lines[sectionId] = [];
+  rec.lines[sectionId].push(line);
+  rec.updatedAt = Date.now();
+  bumpRecent(productId);
+  saveState();
+  return line;
+}
+function deleteLine(sectionId, lineId) {
+  const rec = getCurrentRecord();
+  rec.lines[sectionId] = (rec.lines[sectionId] || []).filter(l => l.id !== lineId);
+  rec.updatedAt = Date.now();
+  saveState();
+}
+function updateLineAmount(sectionId, lineId, amount) {
+  const rec = getCurrentRecord();
+  const ln = (rec.lines[sectionId] || []).find(l => l.id === lineId);
+  if (ln) {
+    ln.amount = amount;
+    rec.updatedAt = Date.now();
+    saveState();
+  }
+}
+
+// ============================================================
+// UI レンダリング
+// ============================================================
+
+function renderAll() {
+  renderHeader();
+  renderSections();
+  renderMasterEditor();
+  renderDataManager();
+  renderSummary();
+}
+
+function renderHeader() {
+  const rec = getCurrentRecord();
+  document.getElementById('record-date').value = rec.date;
+  document.getElementById('record-label').value = rec.label || '';
+  const title = rec.label ? rec.label : ('記録 ' + rec.date);
+  document.getElementById('header-title').textContent = title;
+}
+
+function renderSections() {
+  const container = document.getElementById('sections-container');
+  container.innerHTML = '';
+  for (const sec of SECTIONS) {
+    container.appendChild(renderSection(sec));
+  }
+}
+
+function renderSection(sec) {
+  const rec = getCurrentRecord();
+  const lines = rec.lines[sec.id] || [];
+
+  const section = document.createElement('section');
+  section.className = 'nutri-section';
+  section.setAttribute('data-section', sec.id);
+
+  // ヘッダー
+  const header = document.createElement('div');
+  header.className = 'section-header';
+  const title = document.createElement('h2');
+  title.className = 'section-title';
+  title.textContent = sec.label;
+  const subtotal = document.createElement('div');
+  subtotal.className = 'section-subtotal';
+  subtotal.id = 'subtotal-' + sec.id;
+  subtotal.textContent = formatSubtotal(sumLines(sec.id, lines), sec.id);
+  header.appendChild(title);
+  header.appendChild(subtotal);
+  section.appendChild(header);
+
+  // 行リスト
+  const rowList = document.createElement('div');
+  rowList.className = 'row-list';
+
+  for (const line of lines) {
+    rowList.appendChild(renderRow(sec, line));
+  }
+  // 常に最後に「空行(autocomplete)」を置く
+  rowList.appendChild(renderAutocompleteRow(sec));
+
+  section.appendChild(rowList);
+  return section;
+}
+
+function renderRow(sec, line) {
+  const prod = findProduct(sec.id, line.productId);
+  const row = document.createElement('div');
+  row.className = 'nutri-row';
+  row.setAttribute('data-line-id', line.id);
+
+  const main = document.createElement('div');
+  main.className = 'row-main';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'row-product-name';
+  if (prod) {
+    nameEl.textContent = prod.name;
+    if (prod.category) {
+      const cat = document.createElement('span');
+      cat.className = 'row-product-cat';
+      cat.textContent = ' ' + prod.category;
+      nameEl.appendChild(cat);
+    }
+    if (prod.sample) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-sample';
+      badge.textContent = '仮';
+      nameEl.appendChild(badge);
+    }
+  } else {
+    nameEl.textContent = '(製品情報なし)';
+    nameEl.classList.add('empty');
+  }
+  main.appendChild(nameEl);
+
+  // 量入力
+  const qtyWrap = document.createElement('div');
+  qtyWrap.className = 'row-qty-wrap';
+
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number';
+  qtyInput.inputMode = 'decimal';
+  qtyInput.step = 'any';
+  qtyInput.min = '0';
+  qtyInput.className = 'row-qty';
+  qtyInput.value = line.amount !== null && line.amount !== undefined ? line.amount : '';
+  qtyInput.setAttribute('data-action', 'qty-input');
+  qtyInput.setAttribute('data-section', sec.id);
+  qtyInput.setAttribute('data-line-id', line.id);
+
+  const unitEl = document.createElement('span');
+  unitEl.className = 'row-unit';
+  let unit = sec.defaultUnit;
+  if (sec.id === 'iv' && prod && prod.isInsulin) unit = 'U';
+  unitEl.textContent = unit;
+
+  qtyWrap.appendChild(qtyInput);
+  qtyWrap.appendChild(unitEl);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'row-delete';
+  delBtn.textContent = '×';
+  delBtn.setAttribute('data-action', 'delete-line');
+  delBtn.setAttribute('data-section', sec.id);
+  delBtn.setAttribute('data-line-id', line.id);
+  delBtn.setAttribute('aria-label', '削除');
+  qtyWrap.appendChild(delBtn);
+
+  main.appendChild(qtyWrap);
+  row.appendChild(main);
+
+  // 行小計
+  const sub = document.createElement('div');
+  sub.className = 'row-sub';
+  sub.id = 'rowsub-' + line.id;
+  sub.innerHTML = formatLineSub(sec.id, line);
+  row.appendChild(sub);
+
+  return row;
+}
+
+function renderAutocompleteRow(sec) {
+  const row = document.createElement('div');
+  row.className = 'autocomplete-row';
+  row.setAttribute('data-section', sec.id);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'autocomplete-wrap';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'autocomplete-input';
+  input.placeholder = getAcPlaceholder(sec);
+  input.autocomplete = 'off';
+  input.autocapitalize = 'off';
+  input.setAttribute('data-action', 'ac-input');
+  input.setAttribute('data-section', sec.id);
+  wrap.appendChild(input);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'autocomplete-dropdown';
+  dropdown.style.display = 'none';
+  dropdown.setAttribute('data-ac-dropdown', sec.id);
+  wrap.appendChild(dropdown);
+
+  row.appendChild(wrap);
+  return row;
+}
+
+function getAcPlaceholder(sec) {
+  if (sec.id === 'iv') return '＋ 点滴を検索（例：ソリタ…）';
+  if (sec.id === 'meal') return '＋ 食種を検索（例：常食…）';
+  if (sec.id === 'enteral') return '＋ 経腸栄養剤を検索';
+  if (sec.id === 'ons') return '＋ ONS を検索';
+  return '＋ 追加';
+}
+
+function formatSubtotal(bucket, sectionId) {
+  const parts = [];
+  for (const k of ['energy','protein','fat','carb','water']) {
+    const m = METRICS.find(x => x.key === k);
+    const v = bucket[k];
+    if (v.sum === null && v.unsetCount === 0) continue;
+    const s = fmtNum(v.sum, m.decimals);
+    const mark = v.unsetCount > 0 && v.sum !== null ? '*' : '';
+    parts.push(m.short + ':' + s + mark);
+  }
+  if (sectionId === 'iv' && bucket.insulin && bucket.insulin.sum !== null) {
+    parts.push('Ins:' + fmtNum(bucket.insulin.sum, 1) + 'U');
+  }
+  return parts.join(' ');
+}
+
+function formatLineSub(sectionId, line) {
+  const calc = calcLine(sectionId, line);
+  const parts = [];
+  const prod = findProduct(sectionId, line.productId);
+  if (sectionId === 'iv' && prod && prod.isInsulin) {
+    if (calc.insulin !== null) parts.push('Ins:' + fmtNum(calc.insulin, 1) + 'U');
+    return parts.join(' ');
+  }
+  for (const k of ['energy','protein','fat','carb','na','k','water']) {
+    const m = METRICS.find(x => x.key === k);
+    const v = calc[k];
+    if (v === null) continue;
+    parts.push(m.short + ':' + fmtNum(v, m.decimals));
+  }
+  if (parts.length === 0 && prod && toNumberOrNull(line.amount) !== null) {
+    return '<span class="warn">マスタ未設定の栄養素あり</span>';
+  }
+  return parts.join(' ');
+}
+
+// 小計・サマリーの部分更新（入力中にフォーカスを失わないよう全再描画しない）
+function updateSubtotalsAndSummary() {
+  for (const sec of SECTIONS) {
+    const el = document.getElementById('subtotal-' + sec.id);
+    if (!el) continue;
+    const rec = getCurrentRecord();
+    el.textContent = formatSubtotal(sumLines(sec.id, rec.lines[sec.id] || []), sec.id);
+  }
+  renderSummary();
+}
+
+function updateLineSub(sectionId, lineId) {
+  const el = document.getElementById('rowsub-' + lineId);
+  if (!el) return;
+  const rec = getCurrentRecord();
+  const ln = (rec.lines[sectionId] || []).find(l => l.id === lineId);
+  if (!ln) return;
+  el.innerHTML = formatLineSub(sectionId, ln);
+}
+
+// ============================================================
+// サマリーバー
+// ============================================================
+function renderSummary() {
+  const r = computeAll();
+  const grid = document.getElementById('summary-grid');
+  grid.innerHTML = '';
+  const cells = [
+    { key: 'energy',  label: 'E kcal',   data: r.grand.energy,  decimals: 0, cls: 'cell-a' },
+    { key: 'protein', label: 'P g',      data: r.grand.protein, decimals: 1, cls: 'cell-b' },
+    { key: 'carb',    label: 'C g',      data: r.grand.carb,    decimals: 1, cls: 'cell-c' },
+    { key: 'water',   label: '水 mL',    data: r.grand.water,   decimals: 0, cls: 'cell-d' },
+    { key: 'insulin', label: 'Ins U',    data: r.iv.insulin,    decimals: 1, cls: 'cell-e' }
+  ];
+  for (const c of cells) {
+    const cell = document.createElement('div');
+    cell.className = 'summary-cell ' + c.cls;
+    const lbl = document.createElement('div');
+    lbl.className = 'summary-label';
+    lbl.textContent = c.label;
+    const val = document.createElement('div');
+    val.className = 'summary-value';
+    if (c.data.sum === null && c.data.unsetCount === 0) {
+      val.textContent = '0';
+    } else if (c.data.sum === null) {
+      val.textContent = '—';
+      val.classList.add('warn');
+    } else {
+      val.textContent = fmtNum(c.data.sum, c.decimals) + (c.data.unsetCount > 0 ? '*' : '');
+      if (c.data.unsetCount > 0) val.classList.add('warn');
+    }
+    cell.appendChild(lbl);
+    cell.appendChild(val);
+    grid.appendChild(cell);
+  }
+}
+
+// ============================================================
+// マスタ編集 UI
+// ============================================================
+function renderMasterEditor() {
+  const el = document.getElementById('master-editor');
+  el.innerHTML = '';
+
+  // セクション切替タブ
+  const tabs = document.createElement('div');
+  tabs.className = 'master-tabs';
+  for (const sec of SECTIONS) {
+    const btn = document.createElement('button');
+    btn.className = 'master-tab' + (state.ui.masterActiveSection === sec.id ? ' active' : '');
+    btn.textContent = sec.label;
+    btn.addEventListener('click', () => {
+      state.ui.masterActiveSection = sec.id;
+      renderMasterEditor();
+    });
+    tabs.appendChild(btn);
+  }
+  el.appendChild(tabs);
+
+  const secId = state.ui.masterActiveSection;
+  const list = state.masters[secId] || [];
+
+  // 新規追加ボタン
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-row primary';
+  addBtn.textContent = '＋ 新しい ' + SECTIONS.find(s=>s.id===secId).label + ' を追加';
+  addBtn.style.width = '100%';
+  addBtn.style.padding = '10px';
+  addBtn.style.borderRadius = '8px';
+  addBtn.style.background = 'var(--primary)';
+  addBtn.style.color = '#fff';
+  addBtn.style.marginTop = '6px';
+  addBtn.addEventListener('click', () => openMasterEditModal(secId, null));
+  el.appendChild(addBtn);
+
+  // 検索
+  const searchWrap = document.createElement('div');
+  searchWrap.style.marginTop = '10px';
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = '検索...';
+  searchInput.style.width = '100%';
+  searchInput.addEventListener('input', () => {
+    const q = normalizeJa(searchInput.value.trim());
+    const items = listEl.querySelectorAll('.master-item');
+    items.forEach(it => {
+      const name = it.getAttribute('data-name') || '';
+      it.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  });
+  searchWrap.appendChild(searchInput);
+  el.appendChild(searchWrap);
+
+  // リスト
+  const listEl = document.createElement('div');
+  listEl.className = 'master-list';
+  // 並び替え: お気に入り -> カテゴリ -> 名前
+  const sorted = list.slice().sort((a,b) => {
+    if (!!b.favorite !== !!a.favorite) return (b.favorite?1:0) - (a.favorite?1:0);
+    const c = (a.category || '').localeCompare(b.category || '', 'ja');
+    if (c !== 0) return c;
+    return (a.name || '').localeCompare(b.name || '', 'ja');
+  });
+  for (const p of sorted) {
+    const item = document.createElement('div');
+    item.className = 'master-item';
+    item.setAttribute('data-name', normalizeJa((p.name + ' ' + (p.category||'') + ' ' + (p.kana||''))));
+
+    const favBtn = document.createElement('button');
+    favBtn.className = 'favorite-toggle' + (p.favorite ? ' on' : '');
+    favBtn.textContent = p.favorite ? '★' : '☆';
+    favBtn.style.background = 'none';
+    favBtn.style.border = 'none';
+    favBtn.addEventListener('click', () => { toggleFavorite(secId, p.id); renderMasterEditor(); renderSections(); });
+    item.appendChild(favBtn);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'master-item-name';
+    nameEl.innerHTML = escapeHtml(p.name) + (p.sample?' <span class="badge-sample">仮</span>':'');
+    if (p.category) {
+      nameEl.innerHTML += ' <span class="master-item-cat">' + escapeHtml(p.category) + '</span>';
+    }
+    item.appendChild(nameEl);
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '編集';
+    editBtn.addEventListener('click', () => openMasterEditModal(secId, p.id));
+    item.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '削除';
+    delBtn.style.color = 'var(--danger)';
+    delBtn.addEventListener('click', () => {
+      if (confirm('「' + p.name + '」を削除しますか？（この製品を使っている既存の行も表示が崩れます）')) {
+        deleteMaster(secId, p.id);
+        renderMasterEditor();
+        renderSections();
+        renderSummary();
+      }
+    });
+    item.appendChild(delBtn);
+
+    listEl.appendChild(item);
+  }
+  if (sorted.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ac-empty';
+    empty.textContent = '製品マスタがありません。「新しい〇〇を追加」または下のデータ管理から取り込んでください。';
+    listEl.appendChild(empty);
+  }
+  el.appendChild(listEl);
+}
+
+function openMasterEditModal(sectionId, productId) {
+  const sec = SECTIONS.find(s => s.id === sectionId);
+  const isNew = !productId;
+  const base = isNew ? {
+    id: uid('prod_' + sectionId),
+    name: '',
+    category: '',
+    kana: '',
+    memo: '',
+    favorite: false,
+    sample: false,
+    isInsulin: false,
+    refVolumeMl: (sec.inputMode === 'volume' || sec.inputMode === 'iv') ? 500 : null,
+    nutrients: (function(){
+      const n = {};
+      for (const k of METRIC_KEYS) n[k] = null;
+      return n;
+    })()
+  } : JSON.parse(JSON.stringify(findProduct(sectionId, productId)));
+
+  const body = document.createElement('div');
+  body.className = 'modal-body';
+
+  const isVol = (sec.inputMode === 'volume' || sec.inputMode === 'iv');
+  const perLabel = isVol ? ('栄養量（' + (base.refVolumeMl || 500) + ' mL あたり）') : '栄養量（1回分あたり）';
+
+  body.innerHTML = '' +
+    '<div class="form-field"><label>製品名 *</label><input type="text" id="mf-name" value="' + escapeHtml(base.name||'') + '"></div>' +
+    '<div class="form-field"><label>カテゴリ（例：維持液、一般食）</label><input type="text" id="mf-cat" value="' + escapeHtml(base.category||'') + '"></div>' +
+    '<div class="form-field"><label>よみ（検索用、任意）</label><input type="text" id="mf-kana" value="' + escapeHtml(base.kana||'') + '"></div>' +
+    (sec.id === 'iv' ? '<div class="form-field"><label><input type="checkbox" id="mf-insulin"' + (base.isInsulin?' checked':'') + '> インスリン製剤（混注用。U 入力、栄養量は計算しない）</label></div>' : '') +
+    (isVol ? '<div class="form-field"><label>基準量（mL）</label><input type="number" step="any" id="mf-refvol" value="' + (base.refVolumeMl!=null?base.refVolumeMl:'') + '"></div>' : '') +
+    '<div id="mf-nutrients-wrap"></div>' +
+    '<div class="form-field"><label>メモ</label><textarea id="mf-memo" rows="2">' + escapeHtml(base.memo||'') + '</textarea></div>';
+
+  const modal = openModal({
+    title: (isNew ? '新規' : '編集') + ' - ' + sec.label,
+    body: body,
+    actions: [
+      { label: 'キャンセル', role: 'cancel' },
+      { label: '保存', role: 'primary', onClick: () => {
+        const name = body.querySelector('#mf-name').value.trim();
+        if (!name) { alert('製品名を入力してください。'); return false; }
+        base.name = name;
+        base.category = body.querySelector('#mf-cat').value.trim();
+        base.kana = body.querySelector('#mf-kana').value.trim();
+        base.memo = body.querySelector('#mf-memo').value.trim();
+        if (sec.id === 'iv') base.isInsulin = body.querySelector('#mf-insulin').checked;
+        if (isVol) base.refVolumeMl = toNumberOrNull(body.querySelector('#mf-refvol').value);
+        // nutrients
+        for (const k of METRIC_KEYS) {
+          const el = body.querySelector('#mf-n-' + k);
+          if (!el) continue;
+          base.nutrients[k] = toNumberOrNull(el.value);
+        }
+        base.sample = false;
+        addOrUpdateMaster(sectionId, base);
+        renderMasterEditor();
+        renderSections();
+        renderSummary();
+        return true;
+      }}
+    ]
+  });
+
+  // 栄養量フィールドを動的に描画（インスリンチェック時は非表示）
+  function renderNutrientFields() {
+    const wrap = body.querySelector('#mf-nutrients-wrap');
+    const isInsulin = sec.id === 'iv' && body.querySelector('#mf-insulin') && body.querySelector('#mf-insulin').checked;
+    if (isInsulin) { wrap.innerHTML = '<div class="form-field" style="font-size:12px;color:var(--muted)">インスリン製剤のため栄養量入力は不要です。</div>'; return; }
+    const refInput = body.querySelector('#mf-refvol');
+    const refVal = refInput ? refInput.value : '';
+    const lbl = isVol ? ('栄養量（' + (refVal || '?') + ' mL あたり）') : '栄養量（1回分あたり）';
+    let html = '<div class="form-field"><label>' + lbl + '（空欄 = 未設定、0 = ゼロ）</label></div>';
+    html += '<div class="form-grid-2">';
+    for (const m of METRICS) {
+      const v = base.nutrients[m.key];
+      html += '<div class="form-field"><label>' + m.label + ' (' + m.unit + ')</label>' +
+              '<input type="number" step="any" id="mf-n-' + m.key + '" value="' + (v!=null?v:'') + '"></div>';
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+  renderNutrientFields();
+  const insulinCb = body.querySelector('#mf-insulin');
+  if (insulinCb) insulinCb.addEventListener('change', renderNutrientFields);
+  const refInput = body.querySelector('#mf-refvol');
+  if (refInput) refInput.addEventListener('input', renderNutrientFields);
+}
+
+// ============================================================
+// データ管理 UI
+// ============================================================
+function renderDataManager() {
+  const el = document.getElementById('data-manager');
+  el.innerHTML = '' +
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">マスタ（製品情報）と記録をバックアップ・復元します。</p>' +
+    '<div class="btn-row">' +
+      '<button id="dm-export-json" class="primary">マスタを JSON で書き出し</button>' +
+      '<button id="dm-import-json">マスタを JSON で読み込み</button>' +
+      '<button id="dm-export-csv">マスタを CSV で書き出し</button>' +
+      '<button id="dm-import-csv">マスタを CSV で読み込み</button>' +
+    '</div>' +
+    '<div class="btn-row" style="margin-top:10px">' +
+      '<button id="dm-export-records">記録を JSON で書き出し</button>' +
+      '<button id="dm-import-records">記録を JSON で読み込み</button>' +
+    '</div>' +
+    '<div class="btn-row" style="margin-top:10px">' +
+      '<button id="dm-reload-remote">サーバーのマスタを再取得（masters.json を上書き）</button>' +
+    '</div>' +
+    '<div class="btn-row" style="margin-top:10px">' +
+      '<button id="dm-reset-sample" class="danger">マスタを初期サンプルに戻す</button>' +
+      '<button id="dm-clear-all" class="danger">全データを削除</button>' +
+    '</div>' +
+    '<input type="file" id="dm-file-input" accept=".json,.csv" style="display:none">';
+
+  el.querySelector('#dm-export-json').onclick = exportMastersJson;
+  el.querySelector('#dm-export-csv').onclick = exportMastersCsv;
+  el.querySelector('#dm-export-records').onclick = exportRecordsJson;
+  el.querySelector('#dm-import-json').onclick = () => triggerFileInput('masters-json');
+  el.querySelector('#dm-import-csv').onclick = () => triggerFileInput('masters-csv');
+  el.querySelector('#dm-import-records').onclick = () => triggerFileInput('records-json');
+  el.querySelector('#dm-reload-remote').onclick = async () => {
+    if (!confirm('サーバー上の masters.json を取得して、現在のマスタと統合します（同じIDは上書き）。よろしいですか？')) return;
+    const external = await tryFetchExternalMasters();
+    if (!external) { alert('masters.json が見つからないか、読み込みに失敗しました。'); return; }
+    // 既存と統合（同一IDは上書き）
+    for (const secId of ['iv','meal','enteral','ons']) {
+      const byId = {};
+      (state.masters[secId] || []).forEach(p => byId[p.id] = p);
+      (external[secId] || []).forEach(p => byId[p.id] = p);
+      state.masters[secId] = Object.values(byId);
+    }
+    saveState();
+    renderAll();
+    flashToast('サーバーのマスタを取り込みました');
+  };
+  el.querySelector('#dm-reset-sample').onclick = () => {
+    if (confirm('サンプル（仮データ）を再投入します。自分で追加した製品も消えます。よろしいですか？')) {
+      resetToSampleMasters();
+      renderAll();
+    }
+  };
+  el.querySelector('#dm-clear-all').onclick = () => {
+    if (confirm('全てのマスタと記録を削除します。元に戻せません。よろしいですか？')) {
+      localStorage.removeItem(STORAGE_KEY);
+      state.masters = { iv: [], meal: [], enteral: [], ons: [] };
+      state.records = {};
+      state.currentRecordId = null;
+      state.recentProductUse = {};
+      getCurrentRecord();
+      saveState();
+      renderAll();
+    }
+  };
+}
+
+function triggerFileInput(mode) {
+  const inp = document.getElementById('dm-file-input');
+  inp.value = '';
+  inp.onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        if (mode === 'masters-json') importMastersJson(reader.result);
+        else if (mode === 'masters-csv') importMastersCsv(reader.result);
+        else if (mode === 'records-json') importRecordsJson(reader.result);
+        alert('読み込みが完了しました。');
+      } catch(err) {
+        alert('読み込みに失敗しました：' + err.message);
+      }
+      renderAll();
+    };
+    reader.readAsText(f, 'UTF-8');
+  };
+  inp.click();
+}
+
+function exportMastersJson() {
+  const data = { version: 2, exportedAt: new Date().toISOString(), masters: state.masters };
+  downloadFile('masters_' + todayISO() + '.json', JSON.stringify(data, null, 2), 'application/json');
+}
+function exportRecordsJson() {
+  const data = { version: 2, exportedAt: new Date().toISOString(), records: state.records };
+  downloadFile('records_' + todayISO() + '.json', JSON.stringify(data, null, 2), 'application/json');
+}
+function importMastersJson(text) {
+  const parsed = JSON.parse(text);
+  const m = parsed.masters || parsed;
+  for (const secId of ['iv','meal','enteral','ons']) {
+    if (!Array.isArray(m[secId])) continue;
+    const existing = state.masters[secId] || [];
+    const byId = {};
+    existing.forEach(p => byId[p.id] = p);
+    for (const p of m[secId]) {
+      if (!p.id) p.id = uid('prod_' + secId);
+      byId[p.id] = p;
+    }
+    state.masters[secId] = Object.values(byId);
+  }
+  saveState();
+}
+function importRecordsJson(text) {
+  const parsed = JSON.parse(text);
+  const rec = parsed.records || parsed;
+  for (const id of Object.keys(rec)) {
+    state.records[id] = rec[id];
+  }
+  saveState();
+}
+
+/* CSV: 1行目ヘッダ, カラム:
+   section, id, name, category, kana, isInsulin, refVolumeMl,
+   energy, protein, fat, carb, na, k, mg, p, water, memo, favorite */
+function exportMastersCsv() {
+  const cols = ['section','id','name','category','kana','isInsulin','refVolumeMl','energy','protein','fat','carb','na','k','mg','p','water','memo','favorite'];
+  const rows = [cols.join(',')];
+  for (const secId of ['iv','meal','enteral','ons']) {
+    for (const p of (state.masters[secId] || [])) {
+      const row = cols.map(c => {
+        let v;
+        if (c === 'section') v = secId;
+        else if (c === 'isInsulin') v = p.isInsulin ? '1' : '';
+        else if (c === 'favorite') v = p.favorite ? '1' : '';
+        else if (c === 'refVolumeMl') v = p.refVolumeMl != null ? p.refVolumeMl : '';
+        else if (['energy','protein','fat','carb','na','k','mg','p','water'].includes(c)) {
+          const n = (p.nutrients || {})[c];
+          v = (n == null) ? '' : n;
+        }
+        else v = (p[c] == null) ? '' : p[c];
+        return csvEscape(String(v));
+      }).join(',');
+      rows.push(row);
+    }
+  }
+  // BOM
+  downloadFile('masters_' + todayISO() + '.csv', '\uFEFF' + rows.join('\n'), 'text/csv');
+}
+function csvEscape(s) {
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function parseCsv(text) {
+  // BOM 除去
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let cur = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') inQuotes = false;
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { cur.push(field); field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field !== '' || cur.length > 0) { cur.push(field); rows.push(cur); }
+  return rows;
+}
+function importMastersCsv(text) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) throw new Error('CSV が空です');
+  const header = rows[0].map(h => h.trim());
+  const idx = {};
+  header.forEach((h,i) => idx[h] = i);
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (row.length === 1 && row[0] === '') continue;
+    const secId = row[idx.section];
+    if (!['iv','meal','enteral','ons'].includes(secId)) continue;
+    const prod = {
+      id: row[idx.id] || uid('prod_' + secId),
+      name: row[idx.name] || '',
+      category: row[idx.category] || '',
+      kana: row[idx.kana] || '',
+      memo: row[idx.memo] || '',
+      favorite: !!row[idx.favorite],
+      sample: false,
+      isInsulin: !!row[idx.isInsulin],
+      refVolumeMl: row[idx.refVolumeMl] ? Number(row[idx.refVolumeMl]) : null,
+      nutrients: {}
+    };
+    for (const k of METRIC_KEYS) {
+      const raw = row[idx[k]];
+      prod.nutrients[k] = (raw === '' || raw === undefined) ? null : Number(raw);
+    }
+    if (!prod.name) continue;
+    const arr = state.masters[secId] || (state.masters[secId] = []);
+    const pos = arr.findIndex(x => x.id === prod.id);
+    if (pos >= 0) arr[pos] = prod;
+    else arr.push(prod);
+  }
+  saveState();
+}
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+// ============================================================
+// モーダル
+// ============================================================
+function openModal(opts) {
+  const root = document.getElementById('modal-root');
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  backdrop.appendChild(modal);
+
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+  const title = document.createElement('h3');
+  title.className = 'modal-title';
+  title.textContent = opts.title || '';
+  header.appendChild(title);
+  const close = document.createElement('button');
+  close.className = 'icon-btn';
+  close.style.background = 'transparent';
+  close.style.color = 'var(--muted)';
+  close.textContent = '×';
+  close.addEventListener('click', () => root.removeChild(backdrop));
+  header.appendChild(close);
+  modal.appendChild(header);
+
+  if (opts.body instanceof HTMLElement) modal.appendChild(opts.body);
+  else {
+    const body = document.createElement('div');
+    body.className = 'modal-body';
+    body.innerHTML = opts.body || '';
+    modal.appendChild(body);
+  }
+
+  if (opts.actions && opts.actions.length) {
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    for (const a of opts.actions) {
+      const btn = document.createElement('button');
+      btn.textContent = a.label;
+      if (a.role === 'primary') { btn.style.background = 'var(--primary)'; btn.style.color = '#fff'; }
+      else if (a.role === 'danger') { btn.style.background = 'var(--danger)'; btn.style.color = '#fff'; }
+      else { btn.style.background = '#f0f4f8'; btn.style.border = '1px solid var(--border)'; }
+      btn.addEventListener('click', () => {
+        let shouldClose = true;
+        if (a.onClick) {
+          const res = a.onClick();
+          if (res === false) shouldClose = false;
+        }
+        if (shouldClose) root.removeChild(backdrop);
+      });
+      footer.appendChild(btn);
+    }
+    modal.appendChild(footer);
+  }
+
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) root.removeChild(backdrop); });
+  root.appendChild(backdrop);
+  return backdrop;
+}
+
+// ============================================================
+// 記録一覧
+// ============================================================
+function openRecordsList() {
+  const body = document.createElement('div');
+  body.className = 'modal-body';
+  const recs = Object.values(state.records).sort((a,b) => (b.date > a.date ? 1 : -1));
+  const list = document.createElement('div');
+  for (const r of recs) {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px';
+    const info = document.createElement('div');
+    info.style.flex = '1';
+    info.innerHTML = '<div style="font-weight:600">' + escapeHtml(r.label || r.date) + '</div>' +
+                     '<div style="font-size:11px;color:var(--muted)">' + r.date + (r.id === state.currentRecordId ? ' （編集中）' : '') + '</div>';
+    item.appendChild(info);
+
+    const openBtn = document.createElement('button');
+    openBtn.textContent = '開く';
+    openBtn.style.cssText = 'padding:6px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:13px';
+    openBtn.addEventListener('click', () => {
+      state.currentRecordId = r.id;
+      saveState();
+      document.getElementById('modal-root').innerHTML = '';
+      renderAll();
+    });
+    item.appendChild(openBtn);
+
+    const dupBtn = document.createElement('button');
+    dupBtn.textContent = '複製';
+    dupBtn.style.cssText = 'padding:6px 10px;background:#f0f4f8;border-radius:6px;font-size:13px;border:1px solid var(--border)';
+    dupBtn.addEventListener('click', () => {
+      duplicateRecord(r.id);
+      document.getElementById('modal-root').innerHTML = '';
+      renderAll();
+    });
+    item.appendChild(dupBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '削除';
+    delBtn.style.cssText = 'padding:6px 10px;color:var(--danger);border-radius:6px;font-size:13px';
+    delBtn.addEventListener('click', () => {
+      if (confirm('「' + (r.label || r.date) + '」を削除しますか？')) {
+        deleteRecord(r.id);
+        openRecordsList(); // 開きなおし
+        renderAll();
+      }
+    });
+    item.appendChild(delBtn);
+
+    list.appendChild(item);
+  }
+  if (recs.length === 0) {
+    list.innerHTML = '<div class="ac-empty">記録がありません。</div>';
+  }
+  body.appendChild(list);
+
+  document.getElementById('modal-root').innerHTML = '';
+  openModal({
+    title: '記録一覧（' + recs.length + '件）',
+    body: body,
+    actions: [{ label: '閉じる', role: 'cancel' }]
+  });
+}
+
+// ============================================================
+// サマリーコピー
+// ============================================================
+function buildSummaryText() {
+  const rec = getCurrentRecord();
+  const r = computeAll();
+  const lines = [];
+  lines.push('【1日栄養計算】' + rec.date + (rec.label ? (' ' + rec.label) : ''));
+  lines.push('');
+  const rows = [
+    ['点滴',     r.iv],
+    ['食事',     r.meal],
+    ['経腸栄養', r.enteral],
+    ['ONS',      r.ons],
+    ['合計',     r.grand]
+  ];
+  for (const [label, b] of rows) {
+    const parts = [];
+    for (const k of ['energy','protein','fat','carb','na','k','water']) {
+      const m = METRICS.find(x => x.key === k);
+      if (b[k].sum === null && b[k].unsetCount === 0) continue;
+      const s = fmtNum(b[k].sum, m.decimals);
+      const mk = b[k].unsetCount > 0 && b[k].sum !== null ? '*' : '';
+      parts.push(m.short + ':' + s + m.unit + mk);
+    }
+    lines.push(label + '  ' + parts.join('  '));
+  }
+  lines.push('');
+  if (r.iv.insulin.sum !== null && r.iv.insulin.sum > 0) {
+    lines.push('IV インスリン: ' + fmtNum(r.iv.insulin.sum, 1) + 'U');
+    if (r.carbInsulinRatio !== null) {
+      lines.push('糖質／インスリン比: ' + fmtNum(r.carbInsulinRatio, 1) + ' g/U');
+    }
+  }
+  lines.push('');
+  lines.push('※ 本データは計算補助の参考値です。投与・処方の推奨ではありません。');
+  lines.push('※ * 印は一部栄養素が未設定です。');
+  return lines.join('\n');
+}
+
+async function copySummaryToClipboard() {
+  const text = buildSummaryText();
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    flashToast('サマリーをコピーしました');
+  } catch(e) {
+    // フォールバックとしてモーダル表示
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'width:100%;min-height:260px;font-family:monospace';
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-body';
+    wrap.appendChild(ta);
+    openModal({
+      title: 'サマリー（長押しでコピー）',
+      body: wrap,
+      actions: [{ label: '閉じる', role: 'cancel' }]
+    });
+  }
+}
+
+function flashToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:120px;background:rgba(0,0,0,0.85);color:#fff;padding:10px 16px;border-radius:20px;z-index:200;font-size:13px';
+  document.body.appendChild(t);
+  setTimeout(() => document.body.removeChild(t), 1800);
+}
+
+// ============================================================
+// オートコンプリート
+// ============================================================
+let currentAc = null; // { sectionId, input, dropdown }
+
+function openAcDropdown(sectionId, input) {
+  const wrap = input.parentElement;
+  const dropdown = wrap.querySelector('[data-ac-dropdown="' + sectionId + '"]');
+  if (!dropdown) return;
+  currentAc = { sectionId, input, dropdown };
+  dropdown.style.display = 'block';
+  refreshAcDropdown();
+  // iOS Safari はフォーカスされた入力欄を自動でキーボード上に出すのでこちらでは何もしない
+}
+
+function closeAcDropdown() {
+  if (currentAc && currentAc.dropdown) {
+    currentAc.dropdown.style.display = 'none';
+    currentAc = null;
+  }
+  // 他のセクションの dropdown も閉じる
+  document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.style.display = 'none');
+}
+
+function refreshAcDropdown() {
+  if (!currentAc) return;
+  const { sectionId, input, dropdown } = currentAc;
+  const q = input.value;
+  const products = searchProducts(sectionId, q);
+  dropdown.innerHTML = '';
+
+  if (products.length === 0 && q.trim() === '') {
+    const hdr = document.createElement('div');
+    hdr.className = 'ac-section-header';
+    hdr.textContent = '製品マスタが空です。下の「マスタ編集」から追加してください。';
+    dropdown.appendChild(hdr);
+    return;
+  }
+
+  const favs = products.filter(p => p.favorite);
+  const others = products.filter(p => !p.favorite);
+
+  if (favs.length > 0) {
+    const hdr = document.createElement('div');
+    hdr.className = 'ac-section-header';
+    hdr.textContent = '★ お気に入り';
+    dropdown.appendChild(hdr);
+    favs.forEach(p => dropdown.appendChild(makeAcItem(sectionId, p)));
+  }
+  if (others.length > 0) {
+    if (favs.length > 0) {
+      const hdr2 = document.createElement('div');
+      hdr2.className = 'ac-section-header';
+      hdr2.textContent = 'その他';
+      dropdown.appendChild(hdr2);
+    }
+    others.forEach(p => dropdown.appendChild(makeAcItem(sectionId, p)));
+  }
+  if (products.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ac-empty';
+    empty.textContent = '候補がありません';
+    dropdown.appendChild(empty);
+  }
+
+  // 「新しい製品として追加」
+  if (q.trim() !== '') {
+    const addNew = document.createElement('button');
+    addNew.className = 'ac-add-new';
+    addNew.textContent = '＋ 「' + q.trim() + '」を新しい製品として登録...';
+    addNew.addEventListener('mousedown', (e) => { e.preventDefault(); });
+    addNew.addEventListener('click', () => {
+      const trimmed = q.trim();
+      closeAcDropdown();
+      input.value = '';
+      openMasterEditModal(sectionId, null);
+      // 名前を初期投入（モーダル側で上書きする）
+      setTimeout(() => {
+        const nameInput = document.querySelector('#mf-name');
+        if (nameInput && !nameInput.value) nameInput.value = trimmed;
+      }, 50);
+    });
+    dropdown.appendChild(addNew);
+  }
+}
+
+function makeAcItem(sectionId, product) {
+  const btn = document.createElement('button');
+  btn.className = 'ac-item';
+  let nameHtml = '';
+  if (product.favorite) nameHtml += '<span class="ac-item-fav">★</span>';
+  nameHtml += escapeHtml(product.name);
+  if (product.sample) nameHtml += ' <span class="badge-sample">仮</span>';
+  btn.innerHTML =
+    '<div class="ac-item-name">' + nameHtml + '</div>' +
+    '<div class="ac-item-meta">' + formatAcMeta(sectionId, product) + '</div>';
+  // mousedown でフォーカスロストを防ぐ
+  btn.addEventListener('mousedown', (e) => { e.preventDefault(); });
+  btn.addEventListener('click', () => {
+    selectProductForNewLine(sectionId, product.id);
+  });
+  return btn;
+}
+
+function formatAcMeta(sectionId, p) {
+  const parts = [];
+  if (p.category) parts.push(p.category);
+  const n = p.nutrients || {};
+  const sec = SECTIONS.find(s => s.id === sectionId);
+  if (sec.id === 'iv' && p.isInsulin) {
+    parts.push('インスリン（U 入力）');
+  } else if (sec.inputMode === 'volume' || sec.inputMode === 'iv') {
+    parts.push((p.refVolumeMl || '?') + 'mL あたり: ' +
+               'E' + (n.energy != null ? n.energy : '—') + ' P' + (n.protein != null ? n.protein : '—'));
+  } else {
+    parts.push('1回あたり: E' + (n.energy != null ? n.energy : '—') + ' P' + (n.protein != null ? n.protein : '—'));
+  }
+  return parts.map(escapeHtml).join(' / ');
+}
+
+function selectProductForNewLine(sectionId, productId) {
+  const line = addLine(sectionId, productId);
+  closeAcDropdown();
+  renderSections();
+  renderSummary();
+  // 新しく追加された行の量入力にフォーカス
+  setTimeout(() => {
+    const qty = document.querySelector('[data-action="qty-input"][data-line-id="' + line.id + '"]');
+    if (qty) { qty.focus(); qty.select && qty.select(); }
+  }, 30);
+}
+
+// ============================================================
+// イベント処理
+// ============================================================
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  const action = t.getAttribute && t.getAttribute('data-action');
+  if (action === 'ac-input') {
+    const sectionId = t.getAttribute('data-section');
+    if (!currentAc || currentAc.input !== t) openAcDropdown(sectionId, t);
+    else refreshAcDropdown();
+  } else if (action === 'qty-input') {
+    const sectionId = t.getAttribute('data-section');
+    const lineId = t.getAttribute('data-line-id');
+    updateLineAmount(sectionId, lineId, t.value);
+    updateLineSub(sectionId, lineId);
+    updateSubtotalsAndSummary();
+  } else if (t.id === 'record-label') {
+    const rec = getCurrentRecord();
+    rec.label = t.value;
+    rec.updatedAt = Date.now();
+    saveState();
+    renderHeader();
+  } else if (t.id === 'record-date') {
+    const rec = getCurrentRecord();
+    rec.date = t.value;
+    rec.updatedAt = Date.now();
+    saveState();
+    renderHeader();
+  }
+});
+
+document.addEventListener('focusin', (e) => {
+  const t = e.target;
+  if (t.getAttribute && t.getAttribute('data-action') === 'ac-input') {
+    openAcDropdown(t.getAttribute('data-section'), t);
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const action = t.getAttribute && t.getAttribute('data-action');
+  if (action === 'delete-line') {
+    const sectionId = t.getAttribute('data-section');
+    const lineId = t.getAttribute('data-line-id');
+    deleteLine(sectionId, lineId);
+    renderSections();
+    renderSummary();
+    return;
+  }
+  // dropdown の外クリックで閉じる
+  if (currentAc && !t.closest('.autocomplete-wrap')) {
+    closeAcDropdown();
+  }
+});
+
+document.getElementById('btn-copy').addEventListener('click', copySummaryToClipboard);
+document.getElementById('btn-save').addEventListener('click', () => {
+  saveState();
+  flashToast('保存しました');
+});
+document.getElementById('btn-records').addEventListener('click', openRecordsList);
+document.getElementById('btn-new').addEventListener('click', () => {
+  if (confirm('新しい記録を作成しますか？（現在の記録は保存されています）')) {
+    newRecord();
+  }
+});
+document.getElementById('btn-menu').addEventListener('click', openMenu);
+
+function openMenu() {
+  const body = document.createElement('div');
+  body.className = 'modal-body';
+  const items = [
+    { label: '前日の内容をコピー', onClick: () => copyFromPreviousDay() },
+    { label: '現在の記録を複製', onClick: () => { duplicateRecord(state.currentRecordId); renderAll(); } },
+    { label: '現在の記録を削除', onClick: () => {
+        if (confirm('この記録を削除しますか？')) { deleteRecord(state.currentRecordId); renderAll(); }
+    }}
+  ];
+  for (const it of items) {
+    const btn = document.createElement('button');
+    btn.textContent = it.label;
+    btn.style.cssText = 'display:block;width:100%;padding:12px;text-align:left;border-bottom:1px solid var(--border);background:#fff;font-size:14px';
+    btn.addEventListener('click', () => {
+      document.getElementById('modal-root').innerHTML = '';
+      it.onClick();
+    });
+    body.appendChild(btn);
+  }
+  openModal({ title: 'メニュー', body: body, actions: [{ label: '閉じる', role: 'cancel' }] });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// サンプルマスタ
+// ============================================================
+// ※※※ 実データ差し替えのメインポイント ※※※
+//     ここで「仮データ」を投入している。
+//     実運用では ①マスタ編集 UI で書き換え ②データ管理から JSON/CSV 読み込み
+//     ③この関数を直接書き換え のいずれかで置換する。
+//     サンプル製品名は意図的に「〇〇サンプル」と仮名に留めてある。
+function buildSampleMasters() {
+  const m = (o) => Object.assign({ memo: '', favorite: false, sample: true, kana: '' }, o);
+  return {
+    iv: [
+      m({ id: 'iv_sample_a', name: '点滴サンプルA 500mL', kana: 'てんてきさんぷるえー', category: '糖加維持液', refVolumeMl: 500,
+          isInsulin: false,
+          nutrients: { energy: 200, protein: 0, fat: 0, carb: 50, na: 17.5, k: 10, mg: null, p: null, water: 500 } }),
+      m({ id: 'iv_sample_b', name: 'アミノ酸輸液サンプル 200mL', kana: 'あみのさんゆえきさんぷる', category: 'アミノ酸輸液', refVolumeMl: 200,
+          isInsulin: false,
+          nutrients: { energy: 80, protein: 20, fat: 0, carb: 0, na: 0, k: 0, mg: null, p: null, water: 200 } }),
+      m({ id: 'iv_sample_elec', name: '電解質輸液サンプル 500mL', kana: 'でんかいしつゆえきさんぷる', category: '電解質', refVolumeMl: 500,
+          isInsulin: false,
+          nutrients: { energy: 0, protein: 0, fat: 0, carb: 0, na: 77, k: 20, mg: null, p: null, water: 500 } }),
+      m({ id: 'iv_sample_ins', name: 'インスリンサンプル', kana: 'いんすりんさんぷる', category: 'インスリン混注',
+          isInsulin: true, refVolumeMl: null,
+          nutrients: { energy: null, protein: null, fat: null, carb: null, na: null, k: null, mg: null, p: null, water: null } })
+    ],
+    meal: [
+      m({ id: 'meal_sample_a', name: '常食サンプル', kana: 'じょうしょくさんぷる', category: '一般食',
+          nutrients: { energy: 600, protein: 25, fat: 20, carb: 80, na: 120, k: 40, mg: 80, p: 400, water: 300 } }),
+      m({ id: 'meal_sample_okayu', name: '全粥サンプル', kana: 'ぜんがゆさんぷる', category: '軟菜食',
+          nutrients: { energy: 450, protein: 18, fat: 12, carb: 70, na: 90, k: 30, mg: 60, p: 300, water: 350 } })
+    ],
+    enteral: [
+      m({ id: 'ent_sample_a', name: '経腸栄養剤サンプルA', kana: 'けいちょうえいようざいさんぷるえー', category: '標準組成', refVolumeMl: 200,
+          nutrients: { energy: 200, protein: 7, fat: 7, carb: 28, na: 70, k: 40, mg: 20, p: 70, water: 170 } }),
+      m({ id: 'ent_sample_b', name: '経腸栄養剤サンプルB（高カロリー）', kana: 'けいちょうえいようざいさんぷるびー', category: '濃厚', refVolumeMl: 200,
+          nutrients: { energy: 300, protein: 11, fat: 10, carb: 42, na: 80, k: 60, mg: 30, p: 100, water: 155 } })
+    ],
+    ons: [
+      m({ id: 'ons_sample_a', name: 'ONS サンプルA 125mL', kana: 'おーえぬえすさんぷるえー', category: '高たんぱく',
+          nutrients: { energy: 200, protein: 10, fat: 6, carb: 30, na: 80, k: 120, mg: 20, p: 80, water: 100 } }),
+      m({ id: 'ons_sample_b', name: 'ONS サンプルB 125mL', kana: 'おーえぬえすさんぷるびー', category: '高エネルギー',
+          nutrients: { energy: 300, protein: 7, fat: 12, carb: 40, na: 60, k: 80, mg: 15, p: 60, water: 90 } })
+    ]
+  };
+}
+
+function resetToSampleMasters() {
+  state.masters = buildSampleMasters();
+  saveState();
+}
+
+// 外部 masters.json（GitHub Pages 上に置いた病院マスタ）を取得
+async function tryFetchExternalMasters() {
+  if (location.protocol === 'file:') return null;
+  try {
+    const res = await fetch('./masters.json', { cache: 'no-cache' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const m = data.masters || data;
+    if (!m || (!Array.isArray(m.iv) && !Array.isArray(m.meal) && !Array.isArray(m.enteral) && !Array.isArray(m.ons))) return null;
+    return {
+      iv: m.iv || [],
+      meal: m.meal || [],
+      enteral: m.enteral || [],
+      ons: m.ons || []
+    };
+  } catch(e) {
+    return null;
+  }
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+async function init() {
+  const loaded = loadState();
+  if (!loaded || !hasAnyMaster()) {
+    const external = await tryFetchExternalMasters();
+    if (external) {
+      state.masters = external;
+    } else {
+      state.masters = buildSampleMasters();
+    }
+  }
+  getCurrentRecord();
+  saveState();
+  renderAll();
+
+  // Service Worker 登録
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => { /* silently ignore */ });
+    });
+  }
+}
+
+function hasAnyMaster() {
+  for (const k of ['iv','meal','enteral','ons']) {
+    if ((state.masters[k] || []).length > 0) return true;
+  }
+  return false;
+}
+
+// 起動
+init();
+
+</script>
+</body>
+</html>
